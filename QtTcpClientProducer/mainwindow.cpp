@@ -38,8 +38,15 @@ MainWindow::MainWindow(QWidget *parent) :
 void MainWindow::startTimer() {
     if (socket->state() == QAbstractSocket::ConnectedState) {
         timer->setInterval(timing * 1000); // Define o intervalo do timer com o valor atual
-        connect(timer, &QTimer::timeout, this, &MainWindow::putData); // Conecta ao putData
-        timer->start(); // Inicia o timer
+
+        // Remove qualquer conexão anterior ao timeout
+        disconnect(timer, &QTimer::timeout, this, &MainWindow::putData);
+
+        // Conecta ao putData (agora com garantia de conexão única)
+        connect(timer, &QTimer::timeout, this, &MainWindow::putData, Qt::UniqueConnection);
+
+        // Inicia o timer
+        timer->start();
         qDebug() << "Timer started with interval:" << timing * 1000 << "ms";
     } else {
         qDebug() << "Cannot start timer: Socket is not connected.";
@@ -130,10 +137,9 @@ void MainWindow::tcpConnect() {
     qDebug() << "Ip passado: " << ipAddress;
     socket->connectToHost(ipAddress, 1234);
     if (socket->waitForConnected(3000)) {
-        qDebug() << "Connected";
-
         ui->labelConnected->setText("Connected to " + ipAddress);
         ui->labelConnected->setStyleSheet("color: green;");
+        qDebug() << "Connected";
     } else {
         qDebug() << "Unable to connect";
     }
